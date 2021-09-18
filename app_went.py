@@ -108,6 +108,11 @@ def create_data(data):
     return df_out
     #return temp
     
+def service_available():
+    r = requests.get(st.secrets['url'][:23])
+    status = (r.status_code != 503)
+    
+    return status
 
 
     
@@ -134,4 +139,7 @@ df[lista_urz] = df[lista_urz].applymap(lambda x: {0:"OK", 1:"brak sygnału"}[x])
 
 df.rename(columns={x:y for x,y in zip(lista_urz, nazwy)}, inplace=True)
 
-col2.table(df)
+if service_available():
+    col2.table(df)
+else:
+    col2.header("Serwis niedostępny")
