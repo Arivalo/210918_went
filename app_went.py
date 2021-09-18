@@ -121,7 +121,7 @@ st.markdown("<h1 style='text-align: center; color: black;'>dashboard wentylatory
 
 col1, col2, col3 = st.columns((1,2,1))
 
-data = col1.date_input("", value=dt.date(2021,8,3), min_value=dt.date(2021,8,1), max_value=dt.date.today(), help="Choose day you want to analyze")
+data = col1.date_input("", value=dt.date(2021,8,3), min_value=dt.date(2021,7,1), max_value=dt.date.today(), help="Choose day you want to analyze")
 
 df = create_data(data).set_index("urządzenie").T
 
