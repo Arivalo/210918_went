@@ -95,8 +95,9 @@ class Czujnik:
         return lista_bledow
 
     def sprawdz_CAN_min(self):
-
-        if self.CAN_series.min() < self.CAN_min:
+        # CHWILOWA ZMIANA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        #if self.CAN_series.min() < self.CAN_min:
+        if self.CAN_series.max() < self.CAN_min:
             return False
         else:
             return True
