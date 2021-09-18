@@ -1,0 +1,132 @@
+import streamlit as st
+import requests
+import pandas as pd
+import datetime as dt
+import base64
+from PIL import Image
+
+# to do
+# - wybór daty
+# - formatowanie tabeli
+# - zamiast 0 i 1 - "OK" i "brak sygnału"
+# - index - urządzenie zamiast 0-6
+
+
+
+def download_data(url, haslo=st.secrets['password'], login=st.secrets['username'], retry=5):
+
+    i = 0
+
+    while i < retry:
+        r = requests.get(url,auth=(login, haslo))
+
+        try:
+            j = r.json()
+            break
+        except:
+            i += 1
+            print(f"Try no.{i} failed")
+
+    if i == retry:
+        print(f"Failed to fetch data for: {url}")
+        return pd.DataFrame()
+        
+    df = pd.DataFrame.from_dict(j['entities'])
+    if not df.empty:
+        try:
+            df['longtitude'] = [x['coordinates']['x'] for x in df['_meta']]
+            df['latitude'] = [y['coordinates']['y'] for y in df['_meta']]
+            df.pop('_meta')   
+            
+        except KeyError:
+            print(f'Url error: {url}')
+            
+        df.ffill(inplace=True)
+        df['updatedAt'] = pd.to_datetime(df['updatedAt']).dt.tz_localize(None)         
+            
+    return df
+    
+    
+def utworz_url(data_od, data_do, id):
+    str_base = st.secrets['url']
+    data_do_parted = str(data_do).split("-")
+    str_out = f"{str_base}?from={data_od}T08:00:00Z&to={data_do}T15:00:00Z&monitoredId={id}&limit=10000000"
+    return str_out
+    
+    
+def get_table_download_link(df, nazwa_pliku):
+    """Generates a link allowing the data in a given panda dataframe to be downloaded
+    in:  dataframe
+    out: href string
+    """
+    csv = df.to_csv()
+    b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+    href = f'<a href="data:file/csv;base64,{b64}" download="{nazwa_pliku}.csv">Download stats table</a>'
+    
+    return href
+    
+    
+from diagnostyka_czujnikow import czujnik
+from diagnostyka_czujnikow import system
+
+#@st.cache(suppress_st_warning=True)
+def create_data(data):
+
+    id_dict = {
+        20093:2,
+        20112:3,
+        20178:9,
+        20189:16,
+        20190:17,
+        20192:19,
+        20194:21,
+    }
+
+    tabele_diag = []
+    
+    df_out = pd.DataFrame()
+    df_out["urządzenie"] = [f'XT_UAIN_0{x}' for x in range(7)]
+    
+    for id in list(id_dict.keys()):
+        dane = download_data(utworz_url(data, data, id_dict[id])) 
+        
+        diagnostyka = system.SystemDiagnozy()
+        
+        for col in [f'XT_UAIN_0{x}' for x in range(7)]:
+            try:
+                if len(dane[col].values) > 0:
+                    diagnostyka.dodaj_czujnik(czujnik.Czujnik(dane[col], nazwa=col))
+                else:
+                    diagnostyka.dodaj_czujnik(czujnik.Czujnik(None, nazwa=col))
+                    print(col)
+            except KeyError:
+                diagnostyka.dodaj_czujnik(czujnik.Czujnik(None, nazwa=col))
+        
+        temp = diagnostyka.diagnostyka()
+        df_out[id] = temp['CAN_no_data']
+        
+    return df_out
+    #return temp
+    
+
+
+    
+#############################################################################################################
+
+st.set_page_config(layout="wide")
+
+st.markdown("<h1 style='text-align: center; color: black;'>dashboard wentylatory</h1>", unsafe_allow_html=True)
+
+
+
+col1, col2, col3 = st.columns((1,2,1))
+
+data = col1.date_input("", value=dt.date(2021,8,3), min_value=dt.date(2021,8,1), max_value=dt.date.today(), help="Choose day you want to analyze")
+
+df = create_data(data).set_index("urządzenie").T
+
+lista_urz = [f"XT_UAIN_0{x}" for x in range(7)]
+
+df[lista_urz] = df[lista_urz].applymap(lambda x: {0:"OK", 1:"brak sygnału"}[x])
+
+col2.table(df)
