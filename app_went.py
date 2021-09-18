@@ -95,7 +95,7 @@ def create_data(data):
         for col in [f'XT_UAIN_0{x}' for x in range(7)]:
             try:
                 if len(dane[col].values) > 0:
-                    diagnostyka.dodaj_czujnik(czujnik.Czujnik(dane[col], nazwa=col))
+                    diagnostyka.dodaj_czujnik(czujnik.Czujnik(dane[col], nazwa=col, zakres_CAN=(15, 32768)))
                 else:
                     diagnostyka.dodaj_czujnik(czujnik.Czujnik(None, nazwa=col))
                     print(col)
@@ -103,7 +103,7 @@ def create_data(data):
                 diagnostyka.dodaj_czujnik(czujnik.Czujnik(None, nazwa=col))
         
         temp = diagnostyka.diagnostyka()
-        df_out[id] = temp['CAN_no_data']
+        df_out[id] = [max(x,y) for x,y in zip(temp['CAN_no_data'], temp['CAN_min'])]
         
     return df_out
     #return temp
@@ -119,14 +119,19 @@ st.markdown("<h1 style='text-align: center; color: black;'>dashboard wentylatory
 
 
 
-col1, col2, col3 = st.columns((1,2,1))
+col1, col2, col3 = st.columns((1,4,1))
 
 data = col1.date_input("", value=dt.date(2021,8,3), min_value=dt.date(2021,7,1), max_value=dt.date.today(), help="Choose day you want to analyze")
 
 df = create_data(data).set_index("urządzenie").T
 
 lista_urz = [f"XT_UAIN_0{x}" for x in range(7)]
+nazwy = ["temp na ssaniu (IN_00)", "temp na tłoczeniu (IN_01)", "ciśnienie na ssaniu (IN_02)",
+         "przepływ (IN_03)", "pobór prądu (IN_04)", "prędkość obrotowa (IN_05)",
+         "wilgotoność/ciśnienie tłoczenia (IN_06)"]
 
 df[lista_urz] = df[lista_urz].applymap(lambda x: {0:"OK", 1:"brak sygnału"}[x])
+
+df.rename(columns={x:y for x,y in zip(lista_urz, nazwy)}, inplace=True)
 
 col2.table(df)
