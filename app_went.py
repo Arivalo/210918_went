@@ -10,6 +10,7 @@ from PIL import Image
 # - formatowanie tabeli
 # - zamiast 0 i 1 - "OK" i "brak sygnału"
 # - index - urządzenie zamiast 0-6
+# - rozróżnienie brak danych/sygnału
 
 
 
@@ -103,14 +104,18 @@ def create_data(data):
                 diagnostyka.dodaj_czujnik(czujnik.Czujnik(None, nazwa=col))
         
         temp = diagnostyka.diagnostyka()
-        df_out[id] = [max(x,y) for x,y in zip(temp['CAN_no_data'], temp['CAN_min'])]
+        df_out[id] = [max(x,2*y) for x,y in zip(temp['CAN_no_data'], temp['CAN_min'])]
         
     return df_out
     #return temp
     
-def service_available():
-    r = requests.get(st.secrets['url'][:23])
-    status = (r.status_code != 503)
+def service_available(num_retry=5):
+    for i in range(num_retry):
+        r = requests.get(st.secrets['url'][:23])
+        status = (r.status_code != 503) or status
+        
+        if status:
+            break
     
     return status
 
@@ -128,18 +133,22 @@ col1, col2, col3 = st.columns((1,4,1))
 
 data = col1.date_input("", value=dt.date(2021,8,3), min_value=dt.date(2021,7,1), max_value=dt.date.today(), help="Choose day you want to analyze")
 
-df = create_data(data).set_index("urządzenie").T
-
-lista_urz = [f"XT_UAIN_0{x}" for x in range(7)]
-nazwy = ["temp na ssaniu (IN_00)", "temp na tłoczeniu (IN_01)", "ciśnienie na ssaniu (IN_02)",
-         "przepływ (IN_03)", "pobór prądu (IN_04)", "prędkość obrotowa (IN_05)",
-         "wilgotoność/ciśnienie tłoczenia (IN_06)"]
-
-df[lista_urz] = df[lista_urz].applymap(lambda x: {0:"OK", 1:"brak sygnału"}[x])
-
-df.rename(columns={x:y for x,y in zip(lista_urz, nazwy)}, inplace=True)
-
 if service_available():
+
+    df = create_data(data).set_index("urządzenie").T
+
+    lista_urz = [f"XT_UAIN_0{x}" for x in range(7)]
+    nazwy = ["temp na ssaniu (IN_00)", "temp na tłoczeniu (IN_01)", "ciśnienie na ssaniu (IN_02)",
+             "przepływ (IN_03)", "pobór prądu (IN_04)", "prędkość obrotowa (IN_05)",
+             "wilgotoność/ciśnienie tłoczenia (IN_06)"]
+
+    df[lista_urz] = df[lista_urz].applymap(lambda x: {0:"OK", 1:"brak danych", 2:"brak sygnału"}[x])
+
+    df.rename(columns={x:y for x,y in zip(lista_urz, nazwy)}, inplace=True)
+
+
     col2.table(df)
+    
+    col2.write("*brak sygnału oznacza błąd w sygnale z czujnika, brak danych oznacza ich brak na serwerze")
 else:
     col2.header("Serwis niedostępny")
