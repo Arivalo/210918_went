@@ -149,6 +149,11 @@ if service_available():
 
     col2.table(df)
     
-    col2.write("*brak sygnału oznacza błąd w sygnale z czujnika, brak danych oznacza ich brak na serwerze")
+    
 else:
-    col2.header("Serwis niedostępny")
+    col2.header("brak połączenia")
+    
+col2.write("* 'brak sygnału' - sygnał na wejsciu analogowym < 15 jednostek traktowany jako brak sygnału (w godzinach x-x)")
+col2.write("* 'brak danych' - brak danych w danym dniu odebranych z serwera")
+col2.write("* 'brak połączenia' - chwilowy brak połączenia z serwerem")
+
