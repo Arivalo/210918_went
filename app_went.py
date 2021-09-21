@@ -84,12 +84,15 @@ def create_data(data):
     }
 
     tabele_diag = []
+    lokalizacje = []
     
     df_out = pd.DataFrame()
     df_out["urządzenie"] = [f'XT_UAIN_0{x}' for x in range(7)]
     
     for id in list(id_dict.keys()):
-        dane = download_data(utworz_url(data, data, id_dict[id])) 
+        dane = download_data(utworz_url(data, data, id_dict[id]))
+        
+        lokalizacje.append(dane['location'].value_counts().index[0])
         
         diagnostyka = system.SystemDiagnozy()
         
@@ -106,7 +109,7 @@ def create_data(data):
         temp = diagnostyka.diagnostyka()
         df_out[id] = [max(x,2*y) for x,y in zip(temp['CAN_no_data'], temp['CAN_min'])]
         
-    return df_out
+    return df_out, lokalizacje
     #return temp
     
 def service_available(num_retry=5):
@@ -129,13 +132,17 @@ st.markdown("<h1 style='text-align: center; color: black;'>dashboard wentylatory
 
 
 
-col1, col2, col3 = st.columns((1,4,1))
+col1, col2, col3 = st.columns((1,5,1))
 
 data = col1.date_input("", value=dt.date.today(), min_value=dt.date(2021,7,1), max_value=dt.date.today(), help="Choose day you want to analyze")
 
 if service_available():
 
-    df = create_data(data).set_index("urządzenie").T
+    df, locs = create_data(data)
+    
+    df = df.set_index("urządzenie").T
+    
+    df['lokalizacja'] = locs
 
     lista_urz = [f"XT_UAIN_0{x}" for x in range(7)]
     nazwy = ["temp na ssaniu (IN_00)", "temp na tłoczeniu (IN_01)", "ciśnienie na ssaniu (IN_02)",
@@ -143,6 +150,8 @@ if service_available():
              "wilgotoność/ciśnienie tłoczenia (IN_06)"]
 
     df[lista_urz] = df[lista_urz].applymap(lambda x: {0:"OK", 1:"brak danych", 2:"brak sygnału"}[x])
+    
+    
 
     df.rename(columns={x:y for x,y in zip(lista_urz, nazwy)}, inplace=True)
 
