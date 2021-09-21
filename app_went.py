@@ -5,6 +5,10 @@ import datetime as dt
 import base64
 from PIL import Image
 
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
 # to do
 # - wybór daty
 # - formatowanie tabeli
@@ -92,7 +96,10 @@ def create_data(data):
     for id in list(id_dict.keys()):
         dane = download_data(utworz_url(data, data, id_dict[id]))
         
-        lokalizacje.append(dane['location'].value_counts().index[0])
+        try:
+            lokalizacje.append(dane['location'].value_counts().index[0])
+        except KeyError:
+            lokalizacje.append("brak danych")
         
         diagnostyka = system.SystemDiagnozy()
         
@@ -121,6 +128,40 @@ def service_available(num_retry=5):
             break
     
     return status
+    
+def tabela(df):
+
+    def mapowanie(x):
+        if x == "brak danych":
+            return "lemonchiffon"
+        if x == "brak sygnału":
+            return "mistyrose"
+        return "floralwhite"
+    
+    df = df.reset_index().rename(columns={'index':""})
+    df[""] = [f"<b>{val}</b>" for val in df[""]]
+    
+    fig = go.Figure(data=[go.Table(
+        columnwidth=[10,20,20,20,20,20,20,25,20],
+        header=dict(
+            values=list([f"<b>{col}</b>" for col in df.columns]),
+            fill_color='gray',
+            line_color='darkslategray',
+            align='center',
+            font=dict(color="white", size=15),
+        ),
+        cells=dict(
+            values=[df[col] for col in df.columns],
+            align='center',
+            line_color='darkslategray',
+            fill_color=[df[col].map(mapowanie) for col in df.columns],
+            font=dict(size=15),
+        ),
+    )])
+    
+    fig.update_layout(height=620)
+    
+    return fig
 
 
     
@@ -132,12 +173,12 @@ st.markdown("<h1 style='text-align: center; color: black;'>dashboard wentylatory
 
 
 
-col1, col2, col3 = st.columns((1,5,1))
+col1, col2 = st.columns((2,13))
 
-data = col1.date_input("", value=dt.date.today(), min_value=dt.date(2021,7,1), max_value=dt.date.today(), help="Choose day you want to analyze")
+data = col1.date_input("Wybór daty", value=dt.date.today(), min_value=dt.date(2021,7,1), max_value=dt.date.today(), help="Choose day you want to analyze")
 
 if service_available():
-
+    
     df, locs = create_data(data)
     
     df = df.set_index("urządzenie").T
@@ -147,16 +188,15 @@ if service_available():
     lista_urz = [f"XT_UAIN_0{x}" for x in range(7)]
     nazwy = ["temp na ssaniu (IN_00)", "temp na tłoczeniu (IN_01)", "ciśnienie na ssaniu (IN_02)",
              "przepływ (IN_03)", "pobór prądu (IN_04)", "prędkość obrotowa (IN_05)",
-             "wilgotoność/ciśnienie tłoczenia (IN_06)"]
+             "wilgotność/ciśnienie tł. (IN_06)"]
 
     df[lista_urz] = df[lista_urz].applymap(lambda x: {0:"OK", 1:"brak danych", 2:"brak sygnału"}[x])
     
-    
-
     df.rename(columns={x:y for x,y in zip(lista_urz, nazwy)}, inplace=True)
 
-
-    col2.table(df)
+    #col2.table(df)
+    
+    col2.plotly_chart(tabela(df) , use_container_width=True)
     
     
 else:
