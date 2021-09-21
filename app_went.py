@@ -55,7 +55,7 @@ def download_data(url, haslo=st.secrets['password'], login=st.secrets['username'
 def utworz_url(data_od, data_do, id):
     str_base = st.secrets['url']
     data_do_parted = str(data_do).split("-")
-    str_out = f"{str_base}?from={data_od}T06:00:00Z&to={data_do}T12:00:00Z&monitoredId={id}&limit=10000000"
+    str_out = f"{str_base}?from={data_od}T04:00:00Z&to={data_do}T11:00:00Z&monitoredId={id}&limit=10000000"
     return str_out
     
     
@@ -73,6 +73,15 @@ def get_table_download_link(df, nazwa_pliku):
     
 from diagnostyka_czujnikow import czujnik
 from diagnostyka_czujnikow import system
+
+class Czujnik_w(czujnik.Czujnik):
+
+    def sprawdz_CAN_min(self):
+
+        if self.CAN_series.max() < self.CAN_min:
+            return False
+        else:
+            return True
 
 #@st.cache(suppress_st_warning=True)
 def create_data(data):
@@ -106,15 +115,15 @@ def create_data(data):
         for col in [f'XT_UAIN_0{x}' for x in range(7)]:
             try:
                 if len(dane[col].values) > 0:
-                    diagnostyka.dodaj_czujnik(czujnik.Czujnik(dane[col], nazwa=col, zakres_CAN=(15, 32768)))
+                    diagnostyka.dodaj_czujnik(Czujnik_w(dane[col], nazwa=col, zakres_CAN=(15, 32768)))
                 else:
-                    diagnostyka.dodaj_czujnik(czujnik.Czujnik(None, nazwa=col))
-                    print(col)
+                    diagnostyka.dodaj_czujnik(Czujnik_w(None, nazwa=col))
+                    #print(col)
             except KeyError:
                 diagnostyka.dodaj_czujnik(czujnik.Czujnik(None, nazwa=col))
         
         temp = diagnostyka.diagnostyka()
-        df_out[id] = [max(x,2*y) for x,y in zip(temp['CAN_no_data'], temp['CAN_min'])]
+        df_out[id] = [max(2*x,y) for x,y in zip(temp['CAN_no_data'], temp['CAN_min'])]
         
     return df_out, lokalizacje
     #return temp
@@ -135,11 +144,21 @@ def tabela(df):
         if x == "brak danych":
             return "lemonchiffon"
         if x == "brak sygnału":
-            return "mistyrose"
+            return "lightcoral"
         return "floralwhite"
     
     df = df.reset_index().rename(columns={'index':""})
     df[""] = [f"<b>{val}</b>" for val in df[""]]
+    
+    fill_colors = [df[col].map(mapowanie) for col in df.columns]
+    
+    #malfunctioning_devices = []
+    for i, row_id in enumerate(df.T.columns):
+        row = df.T[row_id].values
+        if "brak sygnału" in row:
+            fill_colors[0][i] = "lightcoral"
+        elif "brak danych" in row:
+            fill_colors[0][i] = "lemonchiffon"
     
     fig = go.Figure(data=[go.Table(
         columnwidth=[10,20,20,20,20,20,20,25,20],
@@ -154,12 +173,12 @@ def tabela(df):
             values=[df[col] for col in df.columns],
             align='center',
             line_color='darkslategray',
-            fill_color=[df[col].map(mapowanie) for col in df.columns],
+            fill_color=fill_colors,
             font=dict(size=15),
         ),
     )])
     
-    fig.update_layout(height=700)
+    fig.update_layout(height=800)
     
     return fig
 
@@ -190,7 +209,7 @@ if service_available():
              "przepływ (IN_03)", "pobór prądu (IN_04)", "prędkość obrotowa (IN_05)",
              "wilgotność/ciśnienie tł. (IN_06)"]
 
-    df[lista_urz] = df[lista_urz].applymap(lambda x: {0:"OK", 1:"brak danych", 2:"brak sygnału"}[x])
+    df[lista_urz] = df[lista_urz].applymap(lambda x: {0:"OK", 2:"brak danych", 1:"brak sygnału"}[x])
     
     df.rename(columns={x:y for x,y in zip(lista_urz, nazwy)}, inplace=True)
 
