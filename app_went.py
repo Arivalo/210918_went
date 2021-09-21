@@ -55,7 +55,7 @@ def download_data(url, haslo=st.secrets['password'], login=st.secrets['username'
 def utworz_url(data_od, data_do, id):
     str_base = st.secrets['url']
     data_do_parted = str(data_do).split("-")
-    str_out = f"{str_base}?from={data_od}T08:00:00Z&to={data_do}T15:00:00Z&monitoredId={id}&limit=10000000"
+    str_out = f"{str_base}?from={data_od}T06:00:00Z&to={data_do}T12:00:00Z&monitoredId={id}&limit=10000000"
     return str_out
     
     
@@ -159,7 +159,7 @@ def tabela(df):
         ),
     )])
     
-    fig.update_layout(height=620)
+    fig.update_layout(height=700)
     
     return fig
 
