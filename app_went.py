@@ -82,6 +82,10 @@ class Czujnik_w(czujnik.Czujnik):
             return False
         else:
             return True
+            
+    def sprawdz_constant_signal(self):
+
+        return False
 
 #@st.cache(suppress_st_warning=True)
 def create_data(data):
@@ -89,7 +93,11 @@ def create_data(data):
     id_dict = {
         20093:2,
         20112:3,
+        20176:7,
+        20177:8,
         20178:9,
+        20183:10,
+        20184:11,
         20189:16,
         20190:17,
         20192:19,
@@ -178,7 +186,7 @@ def tabela(df):
         ),
     )])
     
-    fig.update_layout(height=800)
+    fig.update_layout(height=1100)
     
     return fig
 
@@ -186,7 +194,7 @@ def tabela(df):
     
 #############################################################################################################
 
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title='Status wentylatory')
 
 st.markdown("<h1 style='text-align: center; color: black;'>dashboard wentylatory</h1>", unsafe_allow_html=True)
 
