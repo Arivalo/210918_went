@@ -88,21 +88,22 @@ class Czujnik_w(czujnik.Czujnik):
         return False
 
 #@st.cache(suppress_st_warning=True)
-def create_data(data):
-
-    id_dict = {
-        20093:2,
-        20112:3,
-        20176:7,
-        20177:8,
-        20178:9,
-        20183:10,
-        20184:11,
-        20189:16,
-        20190:17,
-        20192:19,
-        20194:21,
-    }
+def create_data(data, id_dict=None):
+    
+    if id_dict is None:
+        id_dict = {
+            20093:2,
+            20112:3,
+            20176:7,
+            20177:8,
+            20178:9,
+            20183:10,
+            20184:11,
+            20189:16,
+            20190:17,
+            20192:19,
+            20194:21,
+        }
 
     tabele_diag = []
     lokalizacje = []
@@ -186,7 +187,7 @@ def tabela(df):
         ),
     )])
     
-    fig.update_layout(height=1100)
+    fig.update_layout(height=1000)
     
     return fig
 
@@ -202,11 +203,16 @@ st.markdown("<h1 style='text-align: center; color: black;'>dashboard wentylatory
 
 col1, col2 = st.columns((2,13))
 
+id_df = pd.read_csv("lista_urzadzen.csv", index_col=1)
+
+id_dict = {row[0]:row[1]["id_xt"] for row in id_df.iterrows()}
+#st.write(id_df)
+
 data = col1.date_input("Wybór daty", value=dt.date.today(), min_value=dt.date(2021,7,1), max_value=dt.date.today(), help="Choose day you want to analyze")
 
 if service_available():
     
-    df, locs = create_data(data)
+    df, locs = create_data(data, id_dict=id_dict)
     
     df = df.set_index("urządzenie").T
     
@@ -229,7 +235,7 @@ if service_available():
 else:
     col2.header("brak połączenia")
     
-col2.write("* 'brak sygnału' - sygnał na wejsciu analogowym < 15 jednostek traktowany jako brak sygnału (w godzinach x-x)")
-col2.write("* 'brak danych' - brak danych w danym dniu odebranych z serwera")
-col2.write("* 'brak połączenia' - chwilowy brak połączenia z serwerem")
+col1.write("* 'brak sygnału' - sygnał na wejsciu analogowym < 15 jednostek traktowany jako brak sygnału (w godzinach x-x)")
+col1.write("* 'brak danych' - brak danych w danym dniu odebranych z serwera")
+col1.write("* 'brak połączenia' - chwilowy brak połączenia z serwerem")
 
