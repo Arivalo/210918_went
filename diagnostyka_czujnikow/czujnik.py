@@ -126,7 +126,7 @@ class Czujnik:
     def sprawdz_constant_signal(self):
 
         if self.dt_series is None or self.vel_series is None or not self.brak_danych:
-            print(f"{self.nazwa}: brak danych dla kryterium constant_signal")
+            #print(f"{self.nazwa}: brak danych dla kryterium constant_signal")
             return False
 
         seria_przebieg = (self.dt_series.diff().dt.total_seconds() / 3600 * self.vel_series.ffill()).round(3)
