@@ -18,7 +18,7 @@ from plotly.subplots import make_subplots
 
 
 
-def download_data(url, haslo=st.secrets['password'], login=st.secrets['username'], retry=5):
+def download_data(url, haslo=st.secrets['password'], login=st.secrets['username'], retry=3):
 
     i = 0
 
@@ -88,7 +88,7 @@ class Czujnik_w(czujnik.Czujnik):
         return False
 
 #@st.cache(suppress_st_warning=True)
-def create_data(data, id_dict=None):
+def create_data(data, id_dict=None, loc_series=None, client_series=None):
     
     if id_dict is None:
         id_dict = {
@@ -107,6 +107,7 @@ def create_data(data, id_dict=None):
 
     tabele_diag = []
     lokalizacje = []
+    klienci = []
     
     df_out = pd.DataFrame()
     df_out["urządzenie"] = [f'XT_UAIN_0{x}' for x in range(7)]
@@ -114,17 +115,35 @@ def create_data(data, id_dict=None):
     for id in list(id_dict.keys()):
         dane = download_data(utworz_url(data, data, id_dict[id]))
         
-        try:
-            lokalizacje.append(dane['location'].value_counts().index[0])
-        except KeyError:
-            lokalizacje.append("brak danych")
+        if loc_series is None:
+            try:
+                lokalizacje.append(dane['location'].value_counts().index[0])
+            except KeyError:
+                lokalizacje.append("brak danych")
+        else:
+            loc = loc_series.loc[id]
+            #print(loc)
+            if pd.isna(loc):
+                lokalizacje.append("brak danych")
+            else:
+                lokalizacje.append(loc)
+        
+        if client_series is None:
+            klienci = "brak danych"
+        else:
+            klient = client_series.loc[id]
+            if pd.isna(klient):
+                klienci.append("brak danych")
+            else:
+                klienci.append(klient)
+        
         
         diagnostyka = system.SystemDiagnozy()
         
         for col in [f'XT_UAIN_0{x}' for x in range(7)]:
             try:
                 if len(dane[col].values) > 0:
-                    diagnostyka.dodaj_czujnik(Czujnik_w(dane[col], nazwa=col, zakres_CAN=(15, 32768)))
+                    diagnostyka.dodaj_czujnik(Czujnik_w(dane[col], nazwa=col, zakres_CAN=(50, 32768)))
                 else:
                     diagnostyka.dodaj_czujnik(Czujnik_w(None, nazwa=col))
                     #print(col)
@@ -134,7 +153,7 @@ def create_data(data, id_dict=None):
         temp = diagnostyka.diagnostyka()
         df_out[id] = [max(2*x,y) for x,y in zip(temp['CAN_no_data'], temp['CAN_min'])]
         
-    return df_out, lokalizacje
+    return df_out, lokalizacje, klienci
     #return temp
     
 def service_available(num_retry=5):
@@ -170,7 +189,7 @@ def tabela(df):
             fill_colors[0][i] = "lemonchiffon"
     
     fig = go.Figure(data=[go.Table(
-        columnwidth=[10,20,20,20,20,20,20,25,20],
+        columnwidth=[10,20,20,20,20,20,20,25,20, 20],
         header=dict(
             values=list([f"<b>{col}</b>" for col in df.columns]),
             fill_color='gray',
@@ -212,11 +231,12 @@ data = col1.date_input("Wybór daty", value=dt.date.today(), min_value=dt.date(2
 
 if service_available():
     
-    df, locs = create_data(data, id_dict=id_dict)
+    df, locs, clients = create_data(data, id_dict=id_dict, loc_series=id_df["lokalizacja"], client_series=id_df["klient"])
     
     df = df.set_index("urządzenie").T
     
     df['lokalizacja'] = locs
+    df['klient'] = clients
 
     lista_urz = [f"XT_UAIN_0{x}" for x in range(7)]
     nazwy = ["temp na ssaniu (IN_00)", "temp na tłoczeniu (IN_01)", "ciśnienie na ssaniu (IN_02)",
