@@ -255,7 +255,7 @@ if service_available():
 else:
     col2.header("brak połączenia")
     
-col1.write("* 'brak sygnału' - sygnał na wejsciu analogowym < 15 jednostek traktowany jako brak sygnału (w godzinach x-x)")
+col1.write("* 'brak sygnału' - sygnał na wejsciu analogowym < 50 jednostek (<0.25 V) traktowany jako brak sygnału (w godzinach x-x)")
 col1.write("* 'brak danych' - brak danych w danym dniu odebranych z serwera")
 col1.write("* 'brak połączenia' - chwilowy brak połączenia z serwerem")
 
